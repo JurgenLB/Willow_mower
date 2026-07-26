@@ -10,6 +10,9 @@ on:
       - "homebridge-eeve-mower-willow/**"
       - ".github/workflows/node24.yml"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build Homebridge plugin

@@ -101,7 +101,7 @@ export class EeveMowerAccessory {
     this.pollTimer = setInterval(() => this.poll(), POLL_INTERVAL_MS);
 
     // Prevent the interval from blocking Node.js exit (relevant for tests).
-    if (this.pollTimer.unref) this.pollTimer.unref();
+    this.pollTimer.unref();
   }
 
   // ── Characteristic handlers ────────────────────────────────────────────────

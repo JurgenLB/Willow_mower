@@ -68,7 +68,6 @@ interface ActiveSession {
 // ─── Camera accessory ─────────────────────────────────────────────────────────
 
 export class EeveCameraAccessory implements CameraStreamingDelegate {
-  /** Required by CameraStreamingDelegate — set up in the constructor. */
   /** The CameraController instance — type-annotated but created via api.hap at runtime. */
   public readonly controller: CameraController;
 
@@ -348,9 +347,7 @@ export class EeveCameraAccessory implements CameraStreamingDelegate {
       }
     }, intervalMs);
 
-    if ((frameInterval as NodeJS.Timeout & { unref?: () => void }).unref) {
-      (frameInterval as NodeJS.Timeout & { unref: () => void }).unref();
-    }
+    frameInterval.unref?.();
 
     this.activeSessions.set(sessionId, { ffmpegProcess, frameInterval });
 

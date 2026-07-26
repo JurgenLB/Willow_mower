@@ -32,9 +32,9 @@ brew install ffmpeg
 
 ## Installation
 
-### Via HACS / Homebridge UI (recommended)
+### Via Homebridge Config UI X (recommended)
 
-1. Open **Homebridge UI** → **Plugins** → search `homebridge-eeve-mower-willow`.
+1. Open **Homebridge Config UI X** → **Plugins** → search `homebridge-eeve-mower-willow`.
 2. Install and restart Homebridge.
 
 ### Manual install from this repository
@@ -51,7 +51,7 @@ npm link
 Or install directly from GitHub:
 
 ```bash
-npm install -g github:JurgenLB/eeve_mower_willow#main --prefix /path/to/homebridge/node_modules
+npm install -g github:JurgenLB/eeve_mower_willow
 ```
 
 ---

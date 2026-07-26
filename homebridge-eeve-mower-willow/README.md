@@ -14,8 +14,8 @@ Homebridge plugin that exposes the **EEVE Mower Willow** to **HomeKit / Matter**
 
 | Requirement | Notes |
 |---|---|
-| [Homebridge](https://homebridge.io) | v1.3.5 or newer |
-| Node.js | v18 or newer |
+| [Homebridge](https://homebridge.io) | v2.2.1 or newer |
+| Node.js | v24 or newer |
 | **ffmpeg** | Required for **live camera streaming** only. Snapshots work without it. |
 
 ### Install ffmpeg

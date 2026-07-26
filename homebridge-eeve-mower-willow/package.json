@@ -1,0 +1,35 @@
+{
+  "name": "homebridge-eeve-mower-willow",
+  "version": "1.0.0",
+  "description": "Homebridge plugin for EEVE Mower Willow — camera and battery in HomeKit/Matter",
+  "license": "GPL-3.0",
+  "main": "dist/index.js",
+  "keywords": [
+    "homebridge-plugin",
+    "homekit",
+    "eeve",
+    "mower",
+    "willow",
+    "robot",
+    "camera",
+    "battery"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "homebridge": ">=1.3.5"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "prepare": "npm run build",
+    "lint": "eslint src --ext .ts"
+  },
+  "peerDependencies": {
+    "homebridge": ">=1.3.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "homebridge": "^1.7.0",
+    "typescript": "^5.3.0"
+  }
+}

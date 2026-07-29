@@ -188,6 +188,9 @@
       },
       "disk_free": {
         "name": "Disk Free"
+      },
+      "zone_map": {
+        "name": "Zone Map"
       }
     },
     "binary_sensor": {
@@ -393,6 +396,9 @@
     "text": {
       "mower_name": {
         "name": "Mower Name"
+      },
+      "zone_name": {
+        "name": "{zone_name} Name"
       }
     }
   }

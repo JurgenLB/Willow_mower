@@ -1,0 +1,64 @@
+drive:
+  name: Drive
+  description: >-
+    Manually drive the mower (requires manual driving mode). Used by the
+    joystick card. Sends a single short movement; call repeatedly for
+    continuous driving.
+  fields:
+    action:
+      name: Action
+      description: Movement type.
+      required: true
+      example: forward
+      selector:
+        select:
+          options:
+            - forward
+            - backwards
+            - spin
+            - stop
+    speed:
+      name: Speed
+      description: Driving speed in meters per second.
+      default: 0.2
+      selector:
+        number:
+          min: 0.0
+          max: 1.0
+          step: 0.05
+          unit_of_measurement: m/s
+    distance:
+      name: Distance
+      description: Travel distance in meters (forward/backwards).
+      default: 0.3
+      selector:
+        number:
+          min: 0.0
+          max: 5.0
+          step: 0.1
+          unit_of_measurement: m
+    turn_radius:
+      name: Turn radius
+      description: Curve radius in meters while driving forward/backwards (0 = straight).
+      default: 0.0
+      selector:
+        number:
+          min: 0.0
+          max: 10.0
+          step: 0.1
+          unit_of_measurement: m
+    rotation:
+      name: Rotation
+      description: Rotation in degrees for the spin action (negative = left, positive = right).
+      default: 0.0
+      selector:
+        number:
+          min: -360
+          max: 360
+          step: 5
+          unit_of_measurement: "°"
+    entry_id:
+      name: Config entry
+      description: Optional — target a specific mower if you have more than one.
+      selector:
+        text:

@@ -22,7 +22,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, CONF_IP_ADDRESS, MANUFACTURER, MODEL, NAME
+from .const import (
+    DOMAIN,
+    CONF_IP_ADDRESS,
+    MANUFACTURER,
+    MODEL,
+    MOTOR_INTENT_DATA_KEY,
+    NAME,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,8 +59,8 @@ async def async_setup_entry(
     entities.append(BeaconsSwitch(ip_address))
     entities.append(AutoAnnotationSwitch(ip_address))
     entities.append(ManualDrivingSwitch(ip_address))
-    entities.append(MowingMotorSwitch(ip_address))
-    entities.append(DockingSwitch(ip_address))
+    entities.append(MowingMotorSwitch(hass, ip_address))
+    entities.append(DockingSwitch(hass, ip_address))
     entities.append(EmergencyStopSwitch(ip_address))
     entities.append(SoundSwitch(hass, ip_address))
     async_add_entities(entities)
@@ -168,6 +175,15 @@ class MowingMotorSwitch(SwitchEntity):
     Because the motor needs ~2 s to spin up and ~1.5 s to spin down, readback is
     suppressed for a short grace period after a manual toggle so the switch does
     not flip back mid-ramp.
+
+    This switch also records the user's *intent* (on/off) in
+    ``hass.data[MOTOR_INTENT_DATA_KEY][ip_address]``. The ``drive`` service
+    reads that flag — not this switch's polled state — to decide whether to
+    re-engage the blade after a driving maneuver. That distinction matters
+    because EU safety rules require the cutting motor to be off whenever the
+    mower drives backwards: while reversing, the real (polled) state may
+    correctly read "off", but the user's intent is still "on" for once
+    forward driving resumes.
     """
 
     _attr_icon = "mdi:mower"
@@ -175,13 +191,17 @@ class MowingMotorSwitch(SwitchEntity):
     # to bridge the motor spin-up (~2 s) / spin-down (~1.5 s) time.
     _GRACE = 6.0
 
-    def __init__(self, ip_address: str) -> None:
+    def __init__(self, hass: HomeAssistant, ip_address: str) -> None:
+        self._hass = hass
         self._ip_address = ip_address
         self._state: bool = False
         self._last_cmd: float = 0.0
         safe_ip = ip_address.replace(".", "_")
         self._attr_unique_id = f"mowing_motor_{safe_ip}"
         self._device_id = f"eeve_mower_{safe_ip}"
+        # Establish the intent flag without clobbering it on a platform
+        # reload (e.g. an existing drive-service session mid-maneuver).
+        hass.data.setdefault(MOTOR_INTENT_DATA_KEY, {}).setdefault(ip_address, False)
 
     @property
     def device_info(self) -> dict:
@@ -243,6 +263,7 @@ class MowingMotorSwitch(SwitchEntity):
         if await self._call("GET", "/navigation/startmower?throttle=1.0"):
             self._state = True
             self._last_cmd = monotonic()
+            self._hass.data.setdefault(MOTOR_INTENT_DATA_KEY, {})[self._ip_address] = True
             self.async_write_ha_state()
             _LOGGER.info("Cutting motor -> ON")
 
@@ -250,6 +271,7 @@ class MowingMotorSwitch(SwitchEntity):
         if await self._call("GET", "/navigation/stopmower"):
             self._state = False
             self._last_cmd = monotonic()
+            self._hass.data.setdefault(MOTOR_INTENT_DATA_KEY, {})[self._ip_address] = False
             self.async_write_ha_state()
             _LOGGER.info("Cutting motor -> OFF")
 
@@ -268,12 +290,19 @@ class DockingSwitch(SwitchEntity):
     off -> PUT /api/navigation/stopdocking
     state read back from GET /api/system/dockingInfo:
       on while a docking maneuver runs (dockingState != "Idle") or while charging.
+
+    Starting docking is incompatible with manual driving mode and the cutting
+    motor, so turning this switch on also turns off the "Manuelles Fahren"
+    and "Mähmotor" switches (via their own turn_off, so the real device
+    commands run too, not just a local flag) — otherwise their UI state
+    would lag behind reality until the next poll.
     """
 
     _attr_icon = "mdi:home-import-outline"
     _GRACE = 4.0
 
-    def __init__(self, ip_address: str) -> None:
+    def __init__(self, hass: HomeAssistant, ip_address: str) -> None:
+        self._hass = hass
         self._ip_address = ip_address
         self._state: bool = False
         self._last_cmd: float = 0.0
@@ -340,6 +369,7 @@ class DockingSwitch(SwitchEntity):
             self._last_cmd = monotonic()
             self.async_write_ha_state()
             _LOGGER.info("Docking -> START")
+            await self._deactivate_conflicting_switches()
 
     async def async_turn_off(self, **kwargs) -> None:
         if await self._put("/api/navigation/stopdocking"):
@@ -347,6 +377,31 @@ class DockingSwitch(SwitchEntity):
             self._last_cmd = monotonic()
             self.async_write_ha_state()
             _LOGGER.info("Docking -> STOP")
+
+    async def _deactivate_conflicting_switches(self) -> None:
+        """Turn off "Manuelles Fahren" and "Mähmotor" so the UI reflects the
+        docking maneuver immediately instead of waiting for the next poll.
+
+        Resolved via the entity registry (by unique_id) rather than a stored
+        entity reference, since switch.py sets up all entities independently
+        and there is no direct handle between them. Calling the real
+        switch.turn_off service (not just flipping a local flag) means the
+        actual stop-manual-driving / stop-mower device commands run too.
+        """
+        registry = er.async_get(self._hass)
+        safe_ip = self._ip_address.replace(".", "_")
+        for unique_id in (f"manual_driving_{safe_ip}", f"mowing_motor_{safe_ip}"):
+            entity_id = registry.async_get_entity_id("switch", DOMAIN, unique_id)
+            if not entity_id:
+                continue
+            try:
+                await self._hass.services.async_call(
+                    "switch", "turn_off", {"entity_id": entity_id}, blocking=True
+                )
+            except Exception as exc:  # noqa: BLE001 - best-effort, never block docking
+                _LOGGER.warning(
+                    "Docking: could not turn off %s: %s", entity_id, exc
+                )
 
 
 # ---------------------------------------------------------------------------

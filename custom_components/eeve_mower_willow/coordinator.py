@@ -175,6 +175,7 @@ class EeveMowerCoordinator(_EeveCoordinatorBase):
         },
         "toolplanner": {"tools": []},
         "rain_sensor": None,
+        "slam_odometry": {},
     }
 
     _ENDPOINTS: dict[str, str] = {
@@ -185,6 +186,9 @@ class EeveMowerCoordinator(_EeveCoordinatorBase):
         "mowing_info":    "/api/system/mowingInfo",
         "toolplanner":    "/api/toolplanner/status",
         "rain_sensor":    "/sensors/rain",
+        # Live robot position — polled on the fast tier so the map marker
+        # stays current (previously on the 5-minute system tier).
+        "slam_odometry":  "/api/slam/odometry",
     }
 
     def __init__(
@@ -221,7 +225,6 @@ class EeveMowerSystemCoordinator(_EeveCoordinatorBase):
         "time":             {},
         "boot_count":       {},
         "gps":              {},
-        "slam_odometry":    {},
         "powermanager":     {},
         "disk_info":        {},
         "zones":            [],
@@ -242,7 +245,6 @@ class EeveMowerSystemCoordinator(_EeveCoordinatorBase):
         "time":             "/api/system/time",
         "boot_count":       "/api/system/bootcount",
         "gps":              "/api/statuslog/sensors/gps",
-        "slam_odometry":    "/api/slam/odometry",
         "powermanager":     "/api/system/powermanager",
         "disk_info":        "/api/maintenance/mapsFilesystem/diskInfo",
         "zones":            "/api/zones/list",

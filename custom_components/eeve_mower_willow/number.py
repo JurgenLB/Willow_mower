@@ -106,26 +106,64 @@ async def async_setup_entry(
         AllZonesLineDirectionNumber(system_coord, ip_address),
     ]
 
-    zone_list = await async_fetch_zone_settings(ip_address)
-    for zone_id, zone_name, zone_props in zone_list:
-        initial_height = float(
-            zone_props.get("mowActivity", {}).get("mowerHeight", 40)
-        )
-        entities.append(
-            ZoneMowerHeightNumber(
-                system_coord, ip_address, zone_id, zone_name, initial_height
-            )
-        )
+    # --- per-zone number entities (one per GRASSZONE) ---
+    #
+    # Normally only enumerated once, here at platform setup. A zone added
+    # later (e.g. cloned via the map card) needs its own ZoneMowerHeightNumber
+    # / ZoneLineDirectionNumber too — without the listener below that only
+    # happens after a full HA restart. The map card's save flow already
+    # calls eeve_mower_willow.save_zones, which triggers
+    # system_coord.async_request_refresh(); we piggyback on that same
+    # refresh to notice new zone_ids and create their entities immediately.
+    known_zone_ids: set[str] = set()
+
+    def _zone_entities(
+        zone_id: str, zone_name: str, zone_props: dict
+    ) -> list[NumberEntity]:
+        initial_height = float(zone_props.get("mowActivity", {}).get("mowerHeight", 40))
         initial_direction = float(
             zone_props.get("lineMowActivity", {}).get("lineDirection", 0)
         )
-        entities.append(
+        return [
+            ZoneMowerHeightNumber(
+                system_coord, ip_address, zone_id, zone_name, initial_height
+            ),
             ZoneLineDirectionNumber(
                 system_coord, ip_address, zone_id, zone_name, initial_direction
-            )
-        )
+            ),
+        ]
+
+    zone_list = await async_fetch_zone_settings(ip_address)
+    for zone_id, zone_name, zone_props in zone_list:
+        entities.extend(_zone_entities(zone_id, zone_name, zone_props))
+        known_zone_ids.add(zone_id)
 
     async_add_entities(entities)
+
+    @callback
+    def _discover_new_zones() -> None:
+        """Add number entities for any zone not seen at startup."""
+        zone_data = (system_coord.data or {}).get("zone_settings", {})
+        new_entities: list[NumberEntity] = []
+        for feature in zone_data.get("features", []):
+            props = feature.get("properties", {})
+            if props.get("zoneType") != "GRASSZONE":
+                continue
+            zid = feature.get("id")
+            if not zid or zid in known_zone_ids:
+                continue
+            zname = props.get("customName") or props.get("name") or zid
+            new_entities.extend(_zone_entities(zid, zname, props.get("zoneProperties", {})))
+            known_zone_ids.add(zid)
+        if new_entities:
+            _LOGGER.info(
+                "Discovered %d new zone(s) -> adding %d number entities",
+                len(new_entities) // 2,
+                len(new_entities),
+            )
+            async_add_entities(new_entities)
+
+    entry.async_on_unload(system_coord.async_add_listener(_discover_new_zones))
 
 
 # ---------------------------------------------------------------------------

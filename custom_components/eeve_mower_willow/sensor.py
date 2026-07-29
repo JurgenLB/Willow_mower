@@ -345,6 +345,19 @@ FAST_SENSOR_DESCRIPTIONS: tuple[EeveSensorDescription, ...] = (
         coordinator_type="fast",
         value_fn=lambda d: _parse_last_rain(d),
     ),
+    # --- SLAM: live robot position, polled on the fast (30s) tier so the
+    #     map marker stays current. ---
+    EeveSensorDescription(
+        key="slam_odometry",
+        icon="mdi:crosshairs-gps",
+        coordinator_type="fast",
+        legacy_unique_id_suffix="slam_odometry_sensor",
+        value_fn=_slam_state,
+        extra_fn=lambda d: {
+            "accuracy": d.get("slam_odometry", {}).get("acc"),
+            "yaw":      d.get("slam_odometry", {}).get("yaw"),
+        },
+    ),
 )
 
 
@@ -630,17 +643,6 @@ SYSTEM_SENSOR_DESCRIPTIONS: tuple[EeveSensorDescription, ...] = (
     ),
     # --- SLAM ---
     EeveSensorDescription(
-        key="slam_odometry",
-        icon="mdi:crosshairs-gps",
-        coordinator_type="system",
-        legacy_unique_id_suffix="slam_odometry_sensor",
-        value_fn=_slam_state,
-        extra_fn=lambda d: {
-            "accuracy": d.get("slam_odometry", {}).get("acc"),
-            "yaw":      d.get("slam_odometry", {}).get("yaw"),
-        },
-    ),
-    EeveSensorDescription(
         key="distance_to_charger",
         icon="mdi:ev-station",
         native_unit_of_measurement="m",
@@ -667,6 +669,15 @@ SYSTEM_SENSOR_DESCRIPTIONS: tuple[EeveSensorDescription, ...] = (
         legacy_unique_id_suffix="zones_list_sensor",
         value_fn=lambda d: len(d.get("zones", [])),
         extra_fn=lambda d: {"zones": d.get("zones", [])},
+    ),
+    # --- Zone map: full GeoJSON FeatureCollection for the map card ---
+    EeveSensorDescription(
+        key="zone_map",
+        icon="mdi:map",
+        state_class=SensorStateClass.MEASUREMENT,
+        coordinator_type="system",
+        value_fn=lambda d: len(d.get("zone_settings", {}).get("features", [])),
+        extra_fn=lambda d: {"geojson": d.get("zone_settings", {})},
     ),
     # --- Map recording ---
     EeveSensorDescription(

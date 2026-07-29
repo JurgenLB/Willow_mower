@@ -18,6 +18,8 @@ All entities have translated names (English / German) and language-independent e
 - **Lawn mower entity** – start mowing, pause and dock straight from the mower card.
 - **Zone control** – pick the zone to mow, or configure each zone individually.
 - **Per-zone settings** – mowing pattern, mowing frequency, obstacle sensitivity, cutting height and line-mowing direction for every grass zone.
+- **Rename zones from Home Assistant** – every grass zone has a text entity; type a new name and it is written to the mower.
+- **Zones appear without a restart** – add or clone a zone and its settings entities are created immediately.
 - **"All zones" shortcuts** – set mowing pattern, frequency, obstacle sensitivity, cutting height or line direction for **all zones at once**.
 - **Global mowing settings** – global pattern, frequency, mowing speed (m²/h), person-scanning behaviour, max mowing time, start time after sunrise.
 - **Manual driving** – forward, backward, turn left/right, with adjustable drive speed.
@@ -27,6 +29,7 @@ All entities have translated names (English / German) and language-independent e
 - **Status sensors** – battery, activity, current mowing zone, session/today/total mowing time, docking & charge state, rain sensor, and more.
 - **Diagnostics** – network (WiFi/mobile), hardware & firmware versions, motor controller, GPS, disk usage, camera calibration.
 - **Live camera** – the mower's front camera as a Home Assistant camera entity.
+- **Zone geometry API** – the `save_zones` service writes zone GeoJSON back to the mower, which powers the companion map card.
 - **Localized** – full English and German translations; the device page is grouped into *Controls*, *Configuration* and *Diagnostic* sections.
 
 ---
@@ -80,10 +83,11 @@ Entity IDs are shown with the device prefix `eeve_mower` (your mower's name may 
 - **Numbers:** max mowing time, manual drive speed, start time after sunrise, volume, low battery threshold
 - **Switches:** mow on Monday … Sunday, StarLight beacons, auto annotation
 - **Maintenance buttons:** reboot, shutdown, clear rain sensor, build map, start/stop/finish/abort exploration, auto-align maps, resume tool planner, reset heatmap
-- **Text:** mower name
+- **Text:** mower name, plus one *name* entity per grass zone for renaming
 
 ### Sensors
 - Battery, activity, scheduler, tool planner status
+- Zone map (zone layout, used by the map card)
 - Current mowing zone, session / today / total mowing time, today end time
 - Docking state, charge status, charger state, charging current & power
 - Rain sensor, last rain
@@ -97,10 +101,64 @@ Entity IDs are shown with the device prefix `eeve_mower` (your mower's name may 
 
 ---
 
+## Services
+
+The integration registers two services (Developer Tools → Actions):
+
+### `eeve_mower_willow.drive`
+
+Drives the mower manually (requires manual driving mode). If the mowing motor was running before the
+manoeuvre, it is re-engaged afterwards.
+
+| Field | Description |
+| --- | --- |
+| `action` | `forward`, `backwards`, `spin` or `stop` (required) |
+| `speed` | driving speed in m/s (default `0.2`) |
+| `distance` | travel distance in m for `forward` / `backwards` (default `0.3`) |
+| `turn_radius` | curve radius in m while driving, `0` = straight (default `0.0`) |
+| `rotation` | rotation in degrees for `spin`, negative = left (default `0.0`) |
+| `entry_id` | optional — target a specific mower if you have more than one |
+
+Sends a single short movement; call it repeatedly for continuous driving. This is what the joystick in the
+companion card does.
+
+### `eeve_mower_willow.save_zones`
+
+Writes a complete zone layout to the mower and refreshes the cached zone data. New or cloned zones become
+Home Assistant entities right away — no restart needed.
+
+| Field | Description |
+| --- | --- |
+| `geojson` | a GeoJSON `FeatureCollection` describing all zones |
+
+This is the service the companion map card uses when you draw, clone or rename zones on the map.
+
+---
+
+## Companion cards
+
+The [EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card) (v0.2.0+) adds two Lovelace cards
+built on top of this integration:
+
+- **`custom:eeve-mower-card`** – a self-building control panel: live camera with status chips and the mower's
+  AI detection overlays, joystick, all controls and every zone / global setting.
+- **`custom:eeve-mower-map-card`** – a satellite map of your mowing zones with the live mower position and an
+  editor to draw, clone and rename zones.
+
+---
+
 ## Upgrading from earlier versions
 
 Existing entities are preserved on upgrade — their unique IDs are kept stable, so dashboards and automations
 that reference battery, network, camera, reboot/stop and the other original entities keep working.
+
+### Upgrading to v0.5.0
+
+Nothing to do. The release only adds entities (one *name* entity per grass zone, plus `zone_map`) and the
+`save_zones` service. `device_tracker.py`, which was never loaded and had no effect, was removed — GPS data
+is unchanged and remains available via `sensor.gps`.
+
+### Upgrading from pre-0.4 versions
 
 Two things change and are **expected**:
 

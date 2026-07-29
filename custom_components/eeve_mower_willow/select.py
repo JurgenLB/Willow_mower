@@ -137,39 +137,68 @@ async def async_setup_entry(
     ]
 
     # --- per-zone select entities (one per GRASSZONE) ---
-    zone_list = await async_fetch_zone_settings(ip_address)
-    for zone_id, zone_name, zone_props in zone_list:
-        # Mowing pattern per zone
-        initial_pattern = (
-            zone_props.get("mowingPlanner", {}).get("mowingPattern", "RANDOM")
+    #
+    # These are normally only enumerated once, here at platform setup. If a
+    # zone is added later (e.g. cloned via the map card), it needs its own
+    # ZoneMowingPatternSelect/ZoneMowingFrequencySelect/ZoneObstacleSensitivitySelect
+    # too — without the listener below, that only happens after a full HA
+    # restart. The map card's zone-save flow already calls the
+    # eeve_mower_willow.save_zones service, which triggers
+    # system_coord.async_request_refresh() — we piggyback on that same
+    # refresh to notice new zone_ids and create their entities immediately.
+    known_zone_ids: set[str] = set()
+
+    def _zone_entities(
+        zone_id: str, zone_name: str, zone_props: dict
+    ) -> list[SelectEntity]:
+        initial_pattern = zone_props.get("mowingPlanner", {}).get("mowingPattern", "RANDOM")
+        initial_frequency = zone_props.get("mowingPlanner", {}).get("mowingFrequency", "NORMAL")
+        initial_sensitivity = zone_props.get("mowingPlanner", {}).get(
+            "obstacleSensitivity", "OFF_ROAD_REBEL"
         )
-        entities.append(
+        return [
             ZoneMowingPatternSelect(
                 system_coord, ip_address, zone_id, zone_name, initial_pattern
-            )
-        )
-
-        # Mowing frequency per zone (NEW)
-        initial_frequency = (
-            zone_props.get("mowingPlanner", {}).get("mowingFrequency", "NORMAL")
-        )
-        entities.append(
+            ),
             ZoneMowingFrequencySelect(
                 system_coord, ip_address, zone_id, zone_name, initial_frequency
-            )
-        )
-
-        # Obstacle sensitivity per zone (NEW)
-        initial_sensitivity = (
-            zone_props.get("mowingPlanner", {}).get("obstacleSensitivity", "OFF_ROAD_REBEL")
-        )
-        entities.append(
+            ),
             ZoneObstacleSensitivitySelect(
                 system_coord, ip_address, zone_id, zone_name, initial_sensitivity
-            )
-        )
+            ),
+        ]
+
+    zone_list = await async_fetch_zone_settings(ip_address)
+    for zone_id, zone_name, zone_props in zone_list:
+        entities.extend(_zone_entities(zone_id, zone_name, zone_props))
+        known_zone_ids.add(zone_id)
 
     async_add_entities(entities, update_before_add=False)
+
+    @callback
+    def _discover_new_zones() -> None:
+        """Add select entities for any zone not seen at startup."""
+        zone_data = (system_coord.data or {}).get("zone_settings", {})
+        new_entities: list[SelectEntity] = []
+        for feature in zone_data.get("features", []):
+            props = feature.get("properties", {})
+            if props.get("zoneType") != "GRASSZONE":
+                continue
+            zid = feature.get("id")
+            if not zid or zid in known_zone_ids:
+                continue
+            zname = props.get("customName") or props.get("name") or zid
+            new_entities.extend(_zone_entities(zid, zname, props.get("zoneProperties", {})))
+            known_zone_ids.add(zid)
+        if new_entities:
+            _LOGGER.info(
+                "Discovered %d new zone(s) -> adding %d select entities",
+                len(new_entities) // 3,
+                len(new_entities),
+            )
+            async_add_entities(new_entities, update_before_add=False)
+
+    entry.async_on_unload(system_coord.async_add_listener(_discover_new_zones))
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +247,11 @@ class ZoneSelectEntity(SelectEntity):
 
     @property
     def options(self) -> list[str]:
-        return [OPTION_ALL_ZONES] + list(self._zone_map.keys())
+        # Sorted alphabetically rather than API/insertion order: the mower's
+        # own /settings/zones feature array can get reordered by operations
+        # like cloning a zone in the map card, which would otherwise make
+        # this dropdown's order silently shuffle around on its own.
+        return [OPTION_ALL_ZONES] + sorted(self._zone_map.keys())
 
     @property
     def current_option(self) -> str:

@@ -7,8 +7,10 @@ through a standard Home Assistant **lawn mower** entity (start / pause / dock).
 **New in v0.5.0:** rename grass zones straight from Home Assistant, zones added or cloned on
 the mower show up without a restart, and the new `save_zones` service writes zone geometry
 back to the mower. Pair it with the
-[EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card) (v0.2.0+) for a full
-control panel and a map with a zone editor.
+[EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card) (v0.3.0+) for a full
+control panel and the
+[EEVE Mower Map Card](https://github.com/flame4ever/eeve_mower_willow_map_card) (v0.1.0+) for
+a satellite map with a zone editor.
 
 > Entity IDs below use the default `eeve_mower` / `mower` prefix. Adjust them to match your
 > mower's name in your setup.
@@ -116,8 +118,9 @@ type: custom:eeve-mower-card
 type: custom:eeve-mower-map-card
 ```
 
-Both come from the
-[EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card) repository.
+The control panel comes from [EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card);
+the map card comes from [EEVE Mower Map Card](https://github.com/flame4ever/eeve_mower_willow_map_card) —
+each is installed as its own HACS repository.
 
 ## Lovelace Example
 ```yaml

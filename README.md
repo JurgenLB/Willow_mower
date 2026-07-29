@@ -137,13 +137,14 @@ This is the service the companion map card uses when you draw, clone or rename z
 
 ## Companion cards
 
-The [EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card) (v0.2.0+) adds two Lovelace cards
-built on top of this integration:
+Two Lovelace cards build on top of this integration, each in its own HACS-installable repository:
 
-- **`custom:eeve-mower-card`** – a self-building control panel: live camera with status chips and the mower's
-  AI detection overlays, joystick, all controls and every zone / global setting.
-- **`custom:eeve-mower-map-card`** – a satellite map of your mowing zones with the live mower position and an
-  editor to draw, clone and rename zones.
+- **[EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card)** (v0.3.0+) – `custom:eeve-mower-card`,
+  a self-building control panel: live camera with status chips and the mower's AI detection overlays, joystick,
+  all controls and every zone / global setting.
+- **[EEVE Mower Map Card](https://github.com/flame4ever/eeve_mower_willow_map_card)** (v0.1.0+) –
+  `custom:eeve-mower-map-card`, a satellite map of your mowing zones with the live mower position and an editor
+  to draw, clone and rename zones.
 
 ---
 

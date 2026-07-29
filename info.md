@@ -4,6 +4,12 @@ Control and monitor your EEVE Willow lawn mower directly from Home Assistant —
 battery, per-zone settings, manual driving, map exploration and more. Mowing is controlled
 through a standard Home Assistant **lawn mower** entity (start / pause / dock).
 
+**New in v0.5.0:** rename grass zones straight from Home Assistant, zones added or cloned on
+the mower show up without a restart, and the new `save_zones` service writes zone geometry
+back to the mower. Pair it with the
+[EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card) (v0.2.0+) for a full
+control panel and a map with a zone editor.
+
 > Entity IDs below use the default `eeve_mower` / `mower` prefix. Adjust them to match your
 > mower's name in your setup.
 
@@ -63,6 +69,55 @@ through a standard Home Assistant **lawn mower** entity (start / pause / dock).
       target:
         entity_id: lawn_mower.eeve_mower
 ```
+
+### Rename a zone
+```yaml
+- alias: Mower - Rename zone for the season
+  id: 56789012-5678-5678-5678-567890123ef0 # Make this unique
+  trigger:
+    - platform: time
+      at: "04:00:00"
+  condition:
+    - condition: template
+      value_template: "{{ now().month == 4 and now().day == 1 }}"
+  action:
+    - service: text.set_value
+      target:
+        entity_id: text.eeve_mower_grass_1_name # adjust to your zone
+      data:
+        value: "Front lawn (spring)"
+```
+
+### Notify when a new zone appears
+```yaml
+- alias: Mower - Notify on new zone
+  id: 67890123-6789-6789-6789-678901234f01 # Make this unique
+  trigger:
+    - platform: state
+      entity_id: sensor.eeve_mower_zones_count
+  condition:
+    - condition: template
+      value_template: "{{ trigger.to_state.state | int > trigger.from_state.state | int }}"
+  action:
+    - service: notify.mobile_app_your_phone_app # Change to your device
+      data:
+        message: "A new mowing zone was created ({{ trigger.to_state.state }} total)."
+```
+
+## Companion cards
+
+```yaml
+# full control panel — put this in a Panel view
+type: custom:eeve-mower-card
+```
+
+```yaml
+# satellite map with zone editor
+type: custom:eeve-mower-map-card
+```
+
+Both come from the
+[EEVE Mower Card](https://github.com/flame4ever/eeve_mower_willow_card) repository.
 
 ## Lovelace Example
 ```yaml

@@ -1,0 +1,38 @@
+name: Node 24 CI
+
+on:
+  push:
+    paths:
+      - "homebridge-eeve-mower-willow/**"
+      - ".github/workflows/node24.yml"
+  pull_request:
+    paths:
+      - "homebridge-eeve-mower-willow/**"
+      - ".github/workflows/node24.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Homebridge plugin
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: homebridge-eeve-mower-willow
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: homebridge-eeve-mower-willow/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build

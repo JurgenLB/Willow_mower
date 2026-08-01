@@ -120,11 +120,14 @@ export class WillowMowerAccessory {
         if (serial) {
           infoService.updateCharacteristic(Characteristic.SerialNumber, serial);
         }
+        if (info.uniqueHardwareId) {
+          infoService.updateCharacteristic(Characteristic.MAC, info.uniqueHardwareId);
+        }
         if (info.hardwareVersion) {
           infoService.updateCharacteristic(Characteristic.FirmwareRevision, info.hardwareVersion);
         }
       }
-      this.platform.log.debug('Hardware info loaded: serial=%s fw=%s', serial, info.hardwareVersion);
+      this.platform.log.debug('Hardware info loaded: serial=%s MAC=%s fw=%s', serial, info.uniqueHardwareId, info.hardwareVersion);
     } catch (err) {
       this.platform.log.warn('Failed to load hardware info: %s', (err as Error).message);
     }

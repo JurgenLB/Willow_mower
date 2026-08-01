@@ -3,11 +3,11 @@ name: Node.js 24 CI
 on:
   push:
     paths:
-      - "homebridge-eeve-mower-willow/**"
+      - "homebridge-willow-mower/**"
       - ".github/workflows/node24.yml"
   pull_request:
     paths:
-      - "homebridge-eeve-mower-willow/**"
+      - "homebridge-willow-mower/**"
       - ".github/workflows/node24.yml"
 
 permissions:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: homebridge-eeve-mower-willow
+        working-directory: homebridge-willow-mower
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: homebridge-eeve-mower-willow/package-lock.json
+          cache-dependency-path: homebridge-willow-mower/package-lock.json
 
       - run: npm ci
 

@@ -168,10 +168,7 @@ export class WillowCameraAccessory implements CameraStreamingDelegate {
     const localAddress = getLocalAddress(request.addressVersion);
 
     const response: PrepareStreamResponse = {
-      address: {
-        address: localAddress,
-        type: request.addressVersion === 'ipv6' ? 'v6' : 'v4',
-      },
+      addressOverride: localAddress,
       video: {
         port: request.video.port,
         ssrc: videoSSRC,

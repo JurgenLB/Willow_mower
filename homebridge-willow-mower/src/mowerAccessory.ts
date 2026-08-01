@@ -40,6 +40,10 @@ interface ToolPlannerStatus {
   tools?: Array<{ name: string; active: boolean }>;
 }
 
+interface HardwareInfo {
+  [key: string]: unknown;
+}
+
 // ─── Accessory ───────────────────────────────────────────────────────────────
 
 export class WillowMowerAccessory {

@@ -15,6 +15,7 @@ import http from 'http';
 import { WillowMowerPlatform } from './platform';
 import {
   DEFAULT_LOW_BATTERY_THRESHOLD,
+  HardwareInfo,
   MOWER_PORT,
   POLL_INTERVAL_MS,
 } from './settings';
@@ -71,8 +72,7 @@ export class WillowMowerAccessory {
       this.accessory.addService(Service.AccessoryInformation)
     )
       .setCharacteristic(Characteristic.Manufacturer, 'EEVE')
-      .setCharacteristic(Characteristic.Model, 'Willow')
-      .setCharacteristic(Characteristic.SerialNumber, ipAddress);
+      .setCharacteristic(Characteristic.Model, 'Willow');
 
     // ── Switch (mowing control) ──────────────────────────────────────────
     this.switchService =
@@ -102,9 +102,33 @@ export class WillowMowerAccessory {
 
     // Prevent the interval from blocking Node.js exit (relevant for tests).
     this.pollTimer.unref();
+
+    // ── Populate AccessoryInformation from hardware endpoint ──────────────
+    this.initHardwareInfo();
   }
 
   // ── Characteristic handlers ────────────────────────────────────────────────
+
+  private async initHardwareInfo(): Promise<void> {
+    try {
+      const info = await this.fetchJson<HardwareInfo>('/api/system/hardwareInfo');
+      const serial = info.serialNumber ? info.serialNumber.slice(-4) : '';
+      const { Characteristic } = this.platform;
+      const infoService =
+        this.accessory.getService(this.platform.Service.AccessoryInformation);
+      if (infoService) {
+        if (serial) {
+          infoService.updateCharacteristic(Characteristic.SerialNumber, serial);
+        }
+        if (info.hardwareVersion) {
+          infoService.updateCharacteristic(Characteristic.FirmwareRevision, info.hardwareVersion);
+        }
+      }
+      this.platform.log.debug('Hardware info loaded: serial=%s MAC=%s fw=%s', serial, info.uniqueHardwareId, info.hardwareVersion);
+    } catch (err) {
+      this.platform.log.warn('Failed to load hardware info: %s', (err as Error).message);
+    }
+  }
 
   private handleOnGet(): CharacteristicValue {
     return this.isMowing;

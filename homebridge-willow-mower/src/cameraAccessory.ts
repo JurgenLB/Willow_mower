@@ -43,7 +43,7 @@ import { randomBytes } from 'crypto';
 import http from 'http';
 
 import { WillowMowerPlatform } from './platform';
-import { MOWER_PORT } from './settings';
+import { HardwareInfo, MOWER_PORT } from './settings';
 
 // ─── Session types ────────────────────────────────────────────────────────────
 
@@ -93,8 +93,7 @@ export class WillowCameraAccessory implements CameraStreamingDelegate {
       this.accessory.addService(platform.Service.AccessoryInformation)
     )
       .setCharacteristic(platform.Characteristic.Manufacturer, 'EEVE')
-      .setCharacteristic(platform.Characteristic.Model, 'Willow Camera')
-      .setCharacteristic(platform.Characteristic.SerialNumber, `cam-${ipAddress}`);
+      .setCharacteristic(platform.Characteristic.Model, 'Willow Camera');
 
     // ── CameraController setup ────────────────────────────────────────────
     const options: CameraControllerOptions = {
@@ -121,6 +120,9 @@ export class WillowCameraAccessory implements CameraStreamingDelegate {
 
     this.controller = new platform.api.hap.CameraController(options);
     this.accessory.configureController(this.controller);
+
+    // ── Populate AccessoryInformation from hardware endpoint ──────────────
+    this.initHardwareInfo();
   }
 
   // ── Snapshot ───────────────────────────────────────────────────────────────
@@ -168,10 +170,7 @@ export class WillowCameraAccessory implements CameraStreamingDelegate {
     const localAddress = getLocalAddress(request.addressVersion);
 
     const response: PrepareStreamResponse = {
-      address: {
-        address: localAddress,
-        type: request.addressVersion === 'ipv6' ? 'v6' : 'v4',
-      },
+      addressOverride: localAddress,
       video: {
         port: request.video.port,
         ssrc: videoSSRC,
@@ -378,6 +377,63 @@ export class WillowCameraAccessory implements CameraStreamingDelegate {
       this.platform.log.debug('Stopped stream session %s', sessionId);
     }
     this.pendingSessions.delete(sessionId);
+  }
+
+  // ── Internal: populate AccessoryInformation from hardwareInfo ────────────
+
+  private async initHardwareInfo(): Promise<void> {
+    try {
+      const info = await this.fetchJson<HardwareInfo>('/api/system/hardwareInfo');
+      const serial = info.serialNumber ? info.serialNumber.slice(-4) : '';
+      const { Characteristic } = this.platform;
+      const infoService =
+        this.accessory.getService(this.platform.Service.AccessoryInformation);
+      if (infoService) {
+        if (serial) {
+          infoService.updateCharacteristic(Characteristic.SerialNumber, serial);
+        }
+        if (info.hardwareVersion) {
+          infoService.updateCharacteristic(Characteristic.FirmwareRevision, info.hardwareVersion);
+        }
+      }
+      this.platform.log.debug(
+        'Camera hardware info loaded: serial=%s fw=%s', serial, info.hardwareVersion,
+      );
+    } catch (err) {
+      this.platform.log.warn('Failed to load camera hardware info: %s', (err as Error).message);
+    }
+  }
+
+  // ── Internal: generic JSON fetch ─────────────────────────────────────────
+
+  private fetchJson<T>(path: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const req = http.get(
+        {
+          hostname: this.ipAddress,
+          port: MOWER_PORT,
+          path,
+          headers: { accept: 'application/json' },
+          timeout: 10_000,
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c: Buffer) => chunks.push(c));
+          res.on('end', () => {
+            try {
+              resolve(JSON.parse(Buffer.concat(chunks).toString()) as T);
+            } catch (e) {
+              reject(e);
+            }
+          });
+          res.on('error', reject);
+        },
+      );
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy(new Error(`Timeout fetching ${path}`));
+      });
+    });
   }
 
   // ── Internal: fetch a single JPEG frame ───────────────────────────────────

@@ -9,3 +9,13 @@ export const POLL_INTERVAL_MS = 30_000;
 
 /** Default low-battery threshold (%) */
 export const DEFAULT_LOW_BATTERY_THRESHOLD = 20;
+
+/** Response shape of /api/system/hardwareInfo */
+export interface HardwareInfo {
+  hardwareVersion?: string;
+  motorDirection?: number;
+  mowerType?: number;
+  serialNumber?: string;
+  uniqueHardwareId?: string;
+  wheelMotorsType?: number;
+}

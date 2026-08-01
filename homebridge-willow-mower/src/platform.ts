@@ -22,8 +22,8 @@ import { WillowCameraAccessory } from './cameraAccessory';
  *                        live-stream via ffmpeg
  */
 export class WillowMowerPlatform implements DynamicPlatformPlugin {
-  public readonly Service: typeof Service = this.api.hap.Service;
-  public readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic;
+  public readonly Service: typeof Service;
+  public readonly Characteristic: typeof Characteristic;
 
   /** Accessories restored from Homebridge's persistent cache. */
   public readonly accessories: PlatformAccessory[] = [];
@@ -33,6 +33,9 @@ export class WillowMowerPlatform implements DynamicPlatformPlugin {
     public readonly config: PlatformConfig,
     public readonly api: API,
   ) {
+    this.Service = this.api.hap.Service;
+    this.Characteristic = this.api.hap.Characteristic;
+
     this.log.debug('Willow Mower platform initialising');
 
     // Wait until Homebridge has finished loading cached accessories before

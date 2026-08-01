@@ -120,9 +120,6 @@ export class WillowMowerAccessory {
         if (serial) {
           infoService.updateCharacteristic(Characteristic.SerialNumber, serial);
         }
-        if (info.uniqueHardwareId) {
-          infoService.updateCharacteristic(Characteristic.MAC, info.uniqueHardwareId);
-        }
         if (info.hardwareVersion) {
           infoService.updateCharacteristic(Characteristic.FirmwareRevision, info.hardwareVersion);
         }
